@@ -1,0 +1,51 @@
+`timescale 1ns/10ps
+
+`include "defines.sv"
+`include "interface.sv"
+//`include "generator.sv"
+`include "test.sv"
+//`include "assertion.sv"
+
+module top_tb();
+  // Clock Generation
+  bit               clk;  
+  always #10 clk = ~clk;   
+    initial begin 
+    $display(" ================================================= TB Start = 0 =================================================\n");
+    topif.start = 1'b0;
+    repeat(2)
+    @(posedge clk);   
+    topif.start = 1'b1;
+  end              
+  
+  // Interface Instantiation
+  top_if topif(clk); 
+
+  //Memory instantiation          
+  ROM_R memR_u(.clock(clk), .AddressR(topif.AddressR), .R(topif.R));
+  ROM_S memS_u(.clock(clk), .AddressS1(topif.AddressS1), .AddressS2(topif.AddressS2), .S1(topif.S1), .S2(topif.S2));
+  
+  assign memR_u.Rmem = topif.R_mem;
+  assign memS_u.Smem = topif.S_mem;
+
+  // Test
+
+  test test(topif);       
+
+   //DUT Instantiation
+
+  top dut(                             
+    .clock(topif.clk), 
+    .start(topif.start), 
+    .BestDist(topif.BestDist), 
+    .motionX(topif.motionX), 
+    .motionY(topif.motionY), 
+    .AddressR(topif.AddressR), 
+    .AddressS1(topif.AddressS1), 
+    .AddressS2(topif.AddressS2), 
+    .R(topif.R), 
+    .S1(topif.S1), 
+    .S2(topif.S2), 
+    .completed(topif.completed));
+
+endmodule
