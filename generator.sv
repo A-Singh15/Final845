@@ -1,5 +1,7 @@
 `timescale 1ns/1ps
 
+`include "transaction.sv"
+
 class generator;
 
   // Transaction class handle
