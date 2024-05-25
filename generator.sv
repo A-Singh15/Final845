@@ -3,7 +3,7 @@
 class generator;
 
   // Transaction class handle
-  rand Transaction trans;
+  Transaction trans;
 
   // Number of transactions to generate (set to 1 for single transaction)
   int trans_count = 1;
