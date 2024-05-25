@@ -1,19 +1,17 @@
 `timescale 1ns/1ps
 
-`include "environment.sv"
+program automatic test(ac_if.test acif);
 
-program automatic test(top_if topif); 
+    // Declare the environment
+    environment env;
 
-  // Instance of the environment class
-  environment env;
-  
-  // Initial block to set up and run the environment
-  initial begin
-    $vcdpluson;
-    env = new(topif);  // Create a new environment instance with the given interface
-    env.build();
-    //env.gen.trans_count = `TRANSACTION_COUNT;  // Set the total number of transactions to be generated
-    env.run();  // Start the run task of the environment
-    env.wrap_up();
-  end
+    // Initial block to initialize and run the environment
+    initial begin
+        $vcdpluson;
+        env = new(acif);
+        env.build();
+        env.run();
+        env.wrap_up();
+    end
+
 endprogram

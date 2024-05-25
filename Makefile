@@ -1,26 +1,24 @@
-# Makefile for SystemVerilog Lab1 #+ntb_random_seed=$(SEED) 
-RTL= ./top.v
-SVTB = ./top_tb.sv
-SEED = $random
+# Makefile for systemverilog simulation
+RTL= ./accumulator.v 
+#SVTB = ./top.sv 
+SVTB = ./generator.sv ./driver.sv ./monitor.sv ./scoreboard.sv ./environment.sv ./top.sv ./test.sv ./interface.sv
+SEED = 1
 
 default: test 
 
 test: compile run
 
 run:
-	./simv -l simv.log +ntb_random_seed_automatic
+	./simv -l simv.log +ntb_random_seed=$(SEED)
 
 compile:
-	vcs -l vcs.log -sverilog -debug_access+all -full64 $(SVTB) $(RTL)
+	vcs -l vcs.log -sverilog -debug_all -full64 $(SVTB) $(RTL)
 
 dve:
 	dve -vpd vcdplus.vpd &
 
 debug:
 	./simv -l simv.log -gui -tbug +ntb_random_seed=$(SEED)
-
-solution: clean
-	cp ../../solutions/lab1/*.sv .
 
 clean:
 	rm -rf simv* csrc* *.tmp *.vpd *.key *.log *hdrs.h

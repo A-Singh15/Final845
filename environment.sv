@@ -1,70 +1,47 @@
-`ifndef ENVIRONMENT_SV
-`define ENVIRONMENT_SV
-
 `timescale 1ns/1ps
 
-`include "transaction.sv"
-`include "generator.sv"
-`include "driver.sv"
-`include "monitor.sv"
-`include "scoreboard.sv"
-`include "coverage.sv"
-
 class environment;
-  // Handles for Generator, Driver, Monitor, Scoreboard, and Coverage
-  generator gen;                          
-  driver driv;
-  monitor mon;
-  scoreboard scb;
-  coverage cov;                 
-  
-  // Mailbox handles for communication between components
-  mailbox gen2driv, mon2scb, mon2cov;      
-  
-  // Events for synchronization
-  event gen_ended;
-  event mon_done;
-  
-  // Virtual interface handle
-  virtual top_if topif;          
+    generator gen;
+    driver drv;
+    monitor mon;
+    scoreboard scb;
+    mailbox gen2drv, drv2gen, mon2scb, drv2scb;
+    virtual ac_if.test acif;
 
-  // Constructor: Initializes the virtual interface and component instances
-  function new(virtual top_if topif);
-    this.topif = topif;
-  endfunction : new
-  function void build();     
-    gen2driv = new();
-    mon2scb = new();
-    mon2cov = new();
-    gen = new(gen2driv, gen_ended);
-    driv = new(topif, gen2driv);
-    mon = new(topif, mon2scb, mon2cov);
-    scb = new(mon2scb);
-    cov = new(topif, mon2cov);
-  endfunction : build
+    // Constructor
+    function new(input virtual ac_if.test acif);
+        this.acif = acif;
+    endfunction : new
 
-  // Run task: Executes the run tasks of all components
-  task run();
-    fork
-      driv.start(); 
-      gen.run();
-      driv.run();
-      mon.run();
-      scb.run();
-      cov.cove();
-    join_any
-  endtask
-  
-  // wrap up task: Waits for completion and prints the coverage report
- task wrap_up();
-    wait(gen_ended.triggered);
-    wait(gen.trans_count == driv.no_transactions);
-    wait(gen.trans_count == scb.no_transactions);
-    $display (" Motion Estimator Coverage Report = %0.2f %% \n", cov.ME_Coverage);  // Print coverage report
-    //scb.summary();  // Print summary
-    $finish;
-  endtask 
-    
-endclass;
+    // Build function to initialize components
+    function void build();
+        gen2drv = new();
+        drv2gen = new();
+        mon2scb = new();
+        drv2scb = new();
+        gen = new(gen2drv, drv2gen);
+        drv = new(gen2drv, drv2gen, drv2scb, acif);
+        scb = new(drv2scb, mon2scb);
+        mon = new(mon2scb, acif);
+    endfunction : build
 
-`endif // ENVIRONMENT_SV
+    // Run task to start the components
+    task run();
+        fork
+            gen.run();
+            drv.run();
+            mon.run();
+            scb.run();
+        join_none
+    endtask : run
+
+    // Wrap up task to finish the simulation
+    task wrap_up();
+        fork
+            gen.wrap_up();
+            drv.wrap_up();
+            mon.wrap_up();
+            scb.wrap_up();
+        join
+    endtask : wrap_up
+endclass : environment

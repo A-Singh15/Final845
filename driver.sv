@@ -1,57 +1,49 @@
-`timescale 1ns/1ps
-
-`include "defines.sv"
-
 class driver;
+    virtual ac_if.test acif;
+    transaction tr;
+    mailbox mbx, rtn, mbx_scb;
 
-  // Number of transactions and loop variable
-  int no_transactions, j;             
+    extern function new(mailbox mbx, rtn, mbx_scb, input virtual ac_if.test acif);
+    extern virtual task run();
+    extern virtual task wrap_up();
+endclass : driver
 
-  // Virtual interface handle
-  virtual top_if topif;      
+function driver::new(mailbox mbx, rtn, mbx_scb, input virtual ac_if.test acif);
+    this.mbx = mbx;
+    this.rtn = rtn;
+    this.mbx_scb = mbx_scb;
+    this.acif = acif;
+    tr = new();
+endfunction : new
 
-  // Mailbox handle for Gen2Driver
-  mailbox gen2driv;                   
-  
-  // Constructor: Initializes the virtual interface and mailbox
-  function new(virtual top_if topif, mailbox gen2driv);
-    this.topif = topif; 
-    this.gen2driv = gen2driv;     
-    no_transactions = 0; // Initialize transaction count
-  endfunction
+task driver::run();
+    // Apply reset
+    acif.cb.rst <= 1;
+    repeat (2) @(acif.cb);
+    acif.cb.rst <= 0;
 
-  // Start task: Resets the values in memories before starting the operation
-  task start;
-    $display(" ================================================= Start of driver, topif.start: %b =================================================\n", topif.start);
-    wait(!topif.start);
-    $display(" ================================================= [DRIVER_INFO] Initialized to Default =================================================\n");
-    for(j = 0; j < `SMEM_MAX; j++)
-      `DRIV_IF.S_mem[j] <= 0;
-    for(j = 0; j < `RMEM_MAX; j++)
-      `DRIV_IF.R_mem[j] <= 0;
-    wait(topif.start);
-    $display(" ================================================= [DRIVER_INFO] All Memories Set =================================================");
-  endtask
-  
-  // run task: Drives transactions into DUT through the interface
-  task run();
-    Transaction trans;
-    for (int i = 0; i < `TRANSACTION_COUNT; i++) begin
-      gen2driv.get(trans);
-      $display(" *---------*----------*--------* DRIVER TRANSACTION -%0d *--------*--------*-------*----------*", no_transactions);
-      topif.R_mem = trans.R_mem;  // Drive R_mem to interface
-      topif.S_mem = trans.S_mem;  // Drive S_mem to interface
-      topif.start = 1; 
-      @(posedge topif.ME_DRIVER.clk);
-      `DRIV_IF.Expected_motionX <= trans.Expected_motionX;  // Drive Expected Motion X to interface
-      `DRIV_IF.Expected_motionY <= trans.Expected_motionY;  // Drive Expected Motion Y to interface
-      $display("[DRIVER_INFO]     :: Driver Packet Expected_motionX: %d and Expected_motionY: %d", trans.Expected_motionX, trans.Expected_motionY);       
-      wait(topif.completed == 1);  // Wait for DUT to signal completion
-      topif.start = 0;
-      $display("[DRIVER_INFO]     :: DUT sent completed = 1 ");
-      no_transactions++;
-      @(posedge topif.ME_DRIVER.clk);
+    // Check reset operation
+    if (acif.cb.sum == 0)
+        $display("Reset successful.");
+    else
+        $display("Reset failed.");
+
+    // Main driving loop
+    while (1) begin
+        mbx.get(tr);
+        // Acknowledge transaction to generator
+        rtn.put(tr);
+        // Send transaction to scoreboard
+        mbx_scb.put(tr);
+        // Drive the DUT interface
+        acif.cb.in <= tr.in;
+        @(acif.cb);
     end
-  endtask
-  
-endclass
+endtask : run
+
+task driver::wrap_up();
+    wait (acif.cb.sum == 16'hFFFF);
+    @acif.cb;
+    $display("***Sum output saturated to 16'hFFFF; Finishing simulation***");
+    $finish;
+endtask : wrap_up

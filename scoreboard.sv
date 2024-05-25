@@ -1,76 +1,50 @@
-`timescale 1ns/1ps
-
 class scoreboard;
+    int unsigned exp_sum; //variable to hold expected DUT sum output
+    transaction tr_in, tr_out; //transaction inputted to DUT and outputted by DUT
+    mailbox mbx_drv, mbx_mon;
 
-  // Mailbox for receiving transactions from the monitor
-  mailbox mon2scb; 
-  
-  // Counters for different types of matches and transactions
-  int no_transactions = 0, perfect = 0, nomatch = 0, partial = 0;
-  
-  // Variables for motion values
-  integer motionX, motionY;
+    covergroup cov;
+        coverpoint tr_in.in {
+            bins data_bins[] = {0, 16, 32, 48, 64, 80, 96, 112, 128, 144, 160, 176, 192, 208, 224, 240, 255};
+        }
+    endgroup
 
-  // Constructor: Initializes the mailbox handle
-  function new(mailbox mon2scb);
-    this.mon2scb = mon2scb; 
-  endfunction
-  
-  // Main task: Processes transactions and evaluates their results
-  task run();
-    Transaction trans; 
-    $display("*---------*----------*--------* SCOREBOARD MODULE -BEGINS *--------*--------*-------*----------*");
-    forever begin
-      mon2scb.get(trans); // Get transaction from monitor
-      $display("Expected_motionX : %d, Expected_motionY : %d", trans.Expected_motionX, trans.Expected_motionY);
-      
-      // Adjust motionX and motionY for signed values
-      if (trans.motionX >= 8)
-        motionX = trans.motionX - 16;
-      else
-        motionX = trans.motionX;
+    extern function new(mailbox mbx_drv, mbx_mon);
+    extern virtual task run();
+    extern virtual task wrap_up();
+endclass : scoreboard
 
-      if (trans.motionY >= 8)
-        motionY = trans.motionY - 16;
-      else
-        motionY = trans.motionY;
+function scoreboard::new(mailbox mbx_drv, mailbox mbx_mon);
+    this.mbx_drv = mbx_drv;
+    this.mbx_mon = mbx_mon;
+    this.exp_sum = 0;
+    tr_in = new();
+    tr_out = new();
+    cov = new;
+endfunction : new
 
-      $display("\n*---------*----------*--------*--------* RESULTS *--------*--------*-------*----------*--------*");
+task scoreboard::run();
+    while (1) begin
+        // Get transaction from driver
+        mbx_drv.get(tr_in);
+        // Perform coverage sample
+        cov.sample();
+        
+        // Compute expected sum
+        exp_sum = tr_in.sum + tr_in.in;
+        if (exp_sum > 16'hFFFF) exp_sum = 16'hFFFF;
+        
+        // Get transaction from monitor
+        mbx_mon.get(tr_out);
 
-      // Evaluate the transaction based on BestDist value
-      if (trans.BestDist == 8'hFF) begin
-        $display("Reference Memory Not Found in the Search Window!");
-        nomatch++;
-      end
-      else begin
-        if (trans.BestDist == 8'h00) begin
-          $display("Perfect Match Found for Reference Memory in the Search Window"); 
-          $display("BestDist = %0d, motionX = %0d, motionY = %0d, Expected_motionX = %0d, Expected_motionY = %0d", 
-                    trans.BestDist, motionX, motionY, trans.Expected_motionX, trans.Expected_motionY);
-          perfect++;
-        end
-        else begin
-          $display("Partial Match Found: BestDist = %0d, motionX = %0d, motionY = %0d, Expected_motionX = %0d, Expected_motionY = %0d", 
-                    trans.BestDist, motionX, motionY, trans.Expected_motionX, trans.Expected_motionY);
-          partial++;
-        end
-      end
-
-      // Compare DUT motion values with expected values
-      if (motionX == trans.Expected_motionX && motionY == trans.Expected_motionY) begin
-        $display("[SCOREBOARD_INFO] :: Motion As Expected :: DUT motionX = %0d, DUT motionY = %0d, Expected_motionX = %0d, Expected_motionY = %0d", 
-                  motionX, motionY, trans.Expected_motionX, trans.Expected_motionY);
-      end
-      else begin
-        $display("[SCOREBOARD_INFO] :: Motion Not As Expected :: DUT motionX = %0d, DUT motionY = %0d, Expected_motionX = %0d, Expected_motionY = %0d", 
-                  motionX, motionY, trans.Expected_motionX, trans.Expected_motionY);
-      end
-
-      $display("========================================================================================================================\n");  
-      no_transactions++;
-      $display("[SCOREBOARD_INFO] :: Number of Transaction Packets: %d", no_transactions);
-      $display("------------------------------------------------------------------------------------------------------------------------\n");
+        // Compare the outputs
+        if (tr_out.sum == exp_sum)
+            $display("PASS: Expected sum %0h, DUT sum %0h", exp_sum, tr_out.sum);
+        else
+            $display("FAIL: Expected sum %0h, DUT sum %0h", exp_sum, tr_out.sum);
     end
-  endtask
-  
-endclass
+endtask : run
+
+task scoreboard::wrap_up();
+    //empty for now
+endtask : wrap_up

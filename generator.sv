@@ -1,41 +1,32 @@
-`timescale 1ns/1ps
-
-`include "defines.sv"
+class transaction;
+    rand bit [7:0] in;
+    bit [15:0] sum;
+endclass
 
 class generator;
+    transaction tr;
+    mailbox mbx, rtn;
 
-  // Transaction class handle
-  Transaction trans;
+    extern function new(mailbox mbx, rtn);
+    extern virtual task run();
+    extern virtual task wrap_up();
+endclass : generator
 
-  // Number of transactions to generate
-  int trans_count = `TRANSACTION_COUNT;
+function generator::new(mailbox mbx, rtn);
+    this.mbx = mbx;
+    this.rtn = rtn;
+endfunction : new
 
-  // Mailbox handle for communication with driver
-  mailbox gen2driv;
-
-  // Event to signal end of generation
-  event ended;
-
-  // Constructor: Initializes mailbox and event handles
-  function new(mailbox gen2driv, event ended);
-    this.gen2driv = gen2driv;
-    this.ended = ended;
-  endfunction
-
-  // Main task: Generates transactions and sends them to the driver
-  task run();
-    $display("*---------*----------*----------*----------*----------*----------*----------*----------*------*");
-    $display("*---------*----------* ENGR 850: DIGITAL DESIGN VERIFICATION FINAL PROJECT *----------*----------*");
-    $display("*---------*----------*----------*----------*----------*----------*----------*----------*------*");
-    $display("*---------*----------*--------* GENERATOR MODULE -BEGINS *--------*--------*-------*----------*");
-    repeat (trans_count) begin
-      trans = new();
-      if (!trans.randomize()) $fatal("Randomization failed"); // Randomize Transaction class
-      trans.gen_Rmem(); // Generate Rmem from Smem
-      trans.display();
-      gen2driv.put(trans); // Put transaction packet into mailbox
+task generator::run();
+    while (1) begin
+        tr = new();
+        assert(tr.randomize());
+        mbx.put(tr);
+        // Wait for acknowledgment from driver
+        rtn.get(tr);
     end
-    -> ended; // Signal that generation is ended
-  endtask
+endtask : run
 
-endclass
+task generator::wrap_up();
+    //empty for now
+endtask : wrap_up
