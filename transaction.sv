@@ -38,19 +38,17 @@ class Transaction;
     for (int j = 0; j < `SMEM_MAX; j++) begin
       if (j % 32 == 0) $display("  ");
       $write("%h  ", S_mem[j]);
-      if (j == 1023) $display("  ");
     end
 
     $display("*---------*----------*--------* REFERENCE MEMORY *--------*--------*-------*---------*-------*");
     for (int j = 0; j < `RMEM_MAX; j++) begin
       if (j % 16 == 0) $display("  ");
       $write("%h ", R_mem[j]);
-      if (j == 255) $display("  ");
     end
 
-      $display("\n rand_index : %0d", rand_index);     
-      $display("Expected_motionX : %0d", Expected_motionX);
-      $display("Expected_motionY : %0d", Expected_motionY);
+    $display("\n rand_index : %0d", rand_index);     
+    $display("Expected_motionX : %0d", Expected_motionX);
+    $display("Expected_motionY : %0d", Expected_motionY);
   endfunction
 
   // Function to generate reference memory based on search memory and motion vectors
