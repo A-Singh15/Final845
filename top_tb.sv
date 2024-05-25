@@ -2,7 +2,7 @@
 
 `include "defines.sv"
 `include "interface.sv"
-//`include "generator.sv"
+`include "generator.sv"
 `include "test.sv"
 //`include "assertion.sv"
 
