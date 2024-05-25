@@ -123,5 +123,3 @@ class driver;
   endtask
   
 endclass
-  
-endclass
