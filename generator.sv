@@ -1,17 +1,14 @@
-`ifndef GENERATOR_SV
-`define GENERATOR_SV
-
 `timescale 1ns/1ps
 
-`include "transaction.sv"
+`include "defines.sv"
 
 class generator;
 
   // Transaction class handle
   Transaction trans;
 
-  // Number of transactions to generate (set to 1 for single transaction)
-  int trans_count = 1000;
+  // Number of transactions to generate
+  int trans_count = `TRANSACTION_COUNT;
 
   // Mailbox handle for communication with driver
   mailbox gen2driv;
@@ -42,5 +39,3 @@ class generator;
   endtask
 
 endclass
-
-`endif // GENERATOR_SV
