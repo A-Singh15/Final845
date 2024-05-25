@@ -4,7 +4,6 @@
 `include "interface.sv"
 `include "generator.sv"
 `include "test.sv"
-//`include "assertion.sv"
 
 module top_tb();
   // Clock Generation
