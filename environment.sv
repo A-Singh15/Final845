@@ -1,3 +1,6 @@
+`ifndef ENVIRONMENT_SV
+`define ENVIRONMENT_SV
+
 `timescale 1ns/1ps
 
 `include "transaction.sv"
@@ -28,10 +31,7 @@ class environment;
   // Constructor: Initializes the virtual interface and component instances
   function new(virtual top_if topif);
     this.topif = topif;
-    this.build();
   endfunction : new
-
-  // Build function: Initializes the mailboxes and component instances
   function void build();     
     gen2driv = new();
     mon2scb = new();
@@ -46,19 +46,17 @@ class environment;
   // Run task: Executes the run tasks of all components
   task run();
     fork
-      begin
-        driv.start(); 
-        driv.run();
-      end
+      driv.start(); 
       gen.run();
+      driv.run();
       mon.run();
       scb.run();
       cov.cove();
     join_any
   endtask
   
-  // wrap_up task: Waits for completion and prints the coverage report
-  task wrap_up();
+  // wrap up task: Waits for completion and prints the coverage report
+ task wrap_up();
     wait(gen_ended.triggered);
     wait(gen.trans_count == driv.no_transactions);
     wait(gen.trans_count == scb.no_transactions);
@@ -68,3 +66,5 @@ class environment;
   endtask 
     
 endclass;
+
+`endif // ENVIRONMENT_SV
