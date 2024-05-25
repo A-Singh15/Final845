@@ -5,8 +5,7 @@
 class driver;
 
   // Number of transactions and loop variable
-  int no_transactions;             
-  int j;
+  int no_transactions = 0, j;             
 
   // Virtual interface handle
   virtual top_if topif;      
