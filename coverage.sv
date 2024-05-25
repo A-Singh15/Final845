@@ -48,6 +48,8 @@ class coverage;
       bins zero_val  = {0};       // Zero value
       bins pos_val[] = {[1:7]};   // Positive values
     }
+
+    // Cross coverpoints for Expected and Actual motion
     Cross_Exp : cross Expect_motionX,Expect_motionY;
     Cross_Act : cross Actual_motionX,Actual_motionY;
   endgroup
@@ -56,17 +58,17 @@ class coverage;
   function new(virtual top_if topif, mailbox mon2cov);
     this.topif = topif;
     this.mon2cov = mon2cov;
-    ME_covergroup = new();
+    this.trans = new(); // Initialize the transaction object
+    this.ME_covergroup = new();
   endfunction
    
   // Task to continuously sample coverage
   task cove();
-    begin
-      forever begin
-        mon2cov.get(trans);        // Get a transaction from the mailbox
-        ME_covergroup.sample();    // Sample the covergroup
-        ME_Coverage = ME_covergroup.get_coverage(); // Update coverage metric
-      end
+    forever begin
+      mon2cov.get(trans);        // Get a transaction from the mailbox
+      ME_covergroup.sample();    // Sample the covergroup
+      ME_Coverage = ME_covergroup.get_coverage(); // Update coverage metric
+      $display("Current Coverage: %0.2f%%", ME_Coverage); // Display current coverage
     end
   endtask
   
