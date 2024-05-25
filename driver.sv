@@ -5,7 +5,8 @@
 class driver;
 
   // Number of transactions and loop variable
-  int no_transactions = 0, j;             
+  int no_transactions;             
+  int j;
 
   // Virtual interface handle
   virtual top_if topif;      
@@ -17,6 +18,7 @@ class driver;
   function new(virtual top_if topif, mailbox gen2driv);
     this.topif = topif; 
     this.gen2driv = gen2driv;     
+    this.no_transactions = 0; // Initialize no_transactions here
   endfunction
 
   // Start task: Resets the values in memories before starting the operation
