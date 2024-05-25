@@ -1,58 +1,58 @@
-`timescale 1ns/1ps
+`timescale 1ns/10ps
 
 `include "defines.sv"
+`include "interface.sv"
+`include "generator.sv"
+`include "transaction.sv"
+`include "test.sv"
 
-class driver;
-
-  // Number of transactions and loop variable
-  int no_transactions;             
-  int j;             
-
-  // Virtual interface handle
-  virtual top_if topif;      
-
-  // Mailbox handle for Gen2Driver
-  mailbox gen2driv;                   
+module top_tb();
+  // Clock Generation
+  bit clk;  
+  always #10 clk = ~clk;   
   
-  // Constructor: Initializes the virtual interface and mailbox
-  function new(virtual top_if topif, mailbox gen2driv);
-    this.topif = topif; 
-    this.gen2driv = gen2driv;     
-    no_transactions = 0;
-  endfunction
-
-  // Start task: Resets the values in memories before starting the operation
-  task start;
-    $display(" ================================================= Start of driver, topif.start: %b =================================================\n", topif.start);
-    wait(!topif.start);
-    $display(" ================================================= [DRIVER_INFO] Initialized to Default =================================================\n");
-    for(j = 0; j < `SMEM_MAX; j++)
-      `DRIV_IF.S_mem[j] <= 0;
-    for(j = 0; j < `RMEM_MAX; j++)
-      `DRIV_IF.R_mem[j] <= 0;
-    wait(topif.start);
-    $display(" ================================================= [DRIVER_INFO] All Memories Set =================================================");
-  endtask
+  initial begin 
+    clk = 0;
+    $display(" ================================================= TB Start = 0 =================================================\n");
+    topif.start = 1'b0;
+    repeat(2) @(posedge clk);   
+    topif.start = 1'b1;
+  end              
   
-  // Run task: Drives transactions into DUT through the interface
-  task run();
-    Transaction trans;
-    forever begin
-      gen2driv.get(trans);
-      $display(" *---------*----------*--------* DRIVER TRANSACTION -%0d *--------*--------*-------*----------*", no_transactions);
-      topif.R_mem = trans.R_mem;  // Drive R_mem to interface
-      topif.S_mem = trans.S_mem;  // Drive S_mem to interface
-      topif.start = 1; 
-      @(posedge topif.ME_DRIVER.clk);
-      `DRIV_IF.Expected_motionX <= trans.Expected_motionX;  // Drive Expected Motion X to interface
-      `DRIV_IF.Expected_motionY <= trans.Expected_motionY;  // Drive Expected Motion Y to interface
-      $display("[DRIVER_INFO]     :: Driver Packet Expected_motionX: %d and Expected_motionY: %d", trans.Expected_motionX, trans.Expected_motionY);       
-      wait(topif.completed == 1);  // Wait for DUT to signal completion
-      topif.start = 0;
-      $display("[DRIVER_INFO]     :: DUT sent completed = 1 ");
-      no_transactions++;
-      @(posedge topif.ME_DRIVER.clk);
+  // Interface Instantiation
+  top_if topif(clk); 
+
+  // Memory instantiation          
+  ROM_R memR_u(.clock(clk), .AddressR(topif.AddressR), .R(topif.R));
+  ROM_S memS_u(.clock(clk), .AddressS1(topif.AddressS1), .AddressS2(topif.AddressS2), .S1(topif.S1), .S2(topif.S2));
+  
+  initial begin
+    // Initialize memory
+    for (int i = 0; i < `RMEM_MAX; i++) begin
+      memR_u.Rmem[i] = 0;
     end
-  endtask
-  
-endclass
+    for (int i = 0; i < `SMEM_MAX; i++) begin
+      memS_u.Smem[i] = 0;
+    end
+  end
+
+  // Test Instantiation
+  test test_u(.topif(topif));       
+
+  // DUT Instantiation
+  top dut(
+    .clock(topif.clk), 
+    .start(topif.start), 
+    .BestDist(topif.BestDist), 
+    .motionX(topif.motionX), 
+    .motionY(topif.motionY), 
+    .AddressR(topif.AddressR), 
+    .AddressS1(topif.AddressS1), 
+    .AddressS2(topif.AddressS2), 
+    .R(topif.R), 
+    .S1(topif.S1), 
+    .S2(topif.S2), 
+    .completed(topif.completed)
+  );
+
+endmodule
