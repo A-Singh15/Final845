@@ -2,8 +2,6 @@
 
 `include "defines.sv"
 `include "interface.sv"
-`include "generator.sv"
-`include "transaction.sv"
 `include "test.sv"
 
 module top_tb();

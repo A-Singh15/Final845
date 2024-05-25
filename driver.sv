@@ -5,7 +5,7 @@
 class driver;
 
   // Number of transactions and loop variable
-  int no_transactions = 0, j;             
+  int no_transactions, j;             
 
   // Virtual interface handle
   virtual top_if topif;      
@@ -17,7 +17,7 @@ class driver;
   function new(virtual top_if topif, mailbox gen2driv);
     this.topif = topif; 
     this.gen2driv = gen2driv;     
-    this.no_transactions = 0; // Initialize no_transactions here
+    no_transactions = 0; // Initialize transaction count
   endfunction
 
   // Start task: Resets the values in memories before starting the operation
@@ -36,8 +36,7 @@ class driver;
   // run task: Drives transactions into DUT through the interface
   task run();
     Transaction trans;
-    int timeout_counter;
-    forever begin
+    for (int i = 0; i < `TRANSACTION_COUNT; i++) begin
       gen2driv.get(trans);
       $display(" *---------*----------*--------* DRIVER TRANSACTION -%0d *--------*--------*-------*----------*", no_transactions);
       topif.R_mem = trans.R_mem;  // Drive R_mem to interface
@@ -47,17 +46,7 @@ class driver;
       `DRIV_IF.Expected_motionX <= trans.Expected_motionX;  // Drive Expected Motion X to interface
       `DRIV_IF.Expected_motionY <= trans.Expected_motionY;  // Drive Expected Motion Y to interface
       $display("[DRIVER_INFO]     :: Driver Packet Expected_motionX: %d and Expected_motionY: %d", trans.Expected_motionX, trans.Expected_motionY);       
-
-      timeout_counter = 0;
-      while (topif.completed != 1) begin
-        @(posedge topif.ME_DRIVER.clk);
-        timeout_counter++;
-        if (timeout_counter > 1000000) begin
-          $error("Timeout occurred waiting for DUT to complete");
-          $finish;
-        end
-      end
-
+      wait(topif.completed == 1);  // Wait for DUT to signal completion
       topif.start = 0;
       $display("[DRIVER_INFO]     :: DUT sent completed = 1 ");
       no_transactions++;
