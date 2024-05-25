@@ -1,3 +1,6 @@
+`ifndef GENERATOR_SV
+`define GENERATOR_SV
+
 `timescale 1ns/1ps
 
 `include "transaction.sv"
@@ -39,3 +42,5 @@ class generator;
   endtask
 
 endclass
+
+`endif // GENERATOR_SV
