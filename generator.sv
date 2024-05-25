@@ -6,7 +6,7 @@ class generator;
   Transaction trans;
 
   // Number of transactions to generate (set to 1 for single transaction)
-  int trans_count = 100;
+  int trans_count = 1000;
 
   // Mailbox handle for communication with driver
   mailbox gen2driv;
