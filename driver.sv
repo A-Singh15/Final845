@@ -19,7 +19,7 @@ class driver;
     this.gen2driv = gen2driv;     
   endfunction
 
-    // Start task: Resets the values in memories before starting the operation
+  // Start task: Resets the values in memories before starting the operation
   task start;
     $display(" ================================================= Start of driver, topif.start: %b =================================================\n", topif.start);
     wait(!topif.start);
@@ -32,10 +32,10 @@ class driver;
     $display(" ================================================= [DRIVER_INFO] All Memories Set =================================================");
   endtask
   
-    
   // run task: Drives transactions into DUT through the interface
   task run();
     Transaction trans;
+    int timeout_counter;
     forever begin
       gen2driv.get(trans);
       $display(" *---------*----------*--------* DRIVER TRANSACTION -%0d *--------*--------*-------*----------*", no_transactions);
@@ -46,7 +46,17 @@ class driver;
       `DRIV_IF.Expected_motionX <= trans.Expected_motionX;  // Drive Expected Motion X to interface
       `DRIV_IF.Expected_motionY <= trans.Expected_motionY;  // Drive Expected Motion Y to interface
       $display("[DRIVER_INFO]     :: Driver Packet Expected_motionX: %d and Expected_motionY: %d", trans.Expected_motionX, trans.Expected_motionY);       
-      wait(topif.completed == 1);  // Wait for DUT to signal completion
+
+      timeout_counter = 0;
+      while (topif.completed != 1) begin
+        @(posedge topif.ME_DRIVER.clk);
+        timeout_counter++;
+        if (timeout_counter > 1000000) begin
+          $error("Timeout occurred waiting for DUT to complete");
+          $finish;
+        end
+      end
+
       topif.start = 0;
       $display("[DRIVER_INFO]     :: DUT sent completed = 1 ");
       no_transactions++;
